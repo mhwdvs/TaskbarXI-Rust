@@ -179,7 +179,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "taskbar11_rust"
+name = "taskbar11"
 version = "0.1.0"
 dependencies = [
  "clap",

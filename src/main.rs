@@ -1,16 +1,17 @@
-use windows::Win32::Foundation::HWND;
-use windows::Win32::Foundation::LPARAM;
-use windows::Win32::Foundation::LRESULT;
-use windows::Win32::Foundation::WPARAM;
-use windows::Win32::Graphics::Gdi::CreateRectRgn;
-use windows::Win32::Graphics::Gdi::SetWindowRgn;
-use windows::Win32::System::Console::FreeConsole;
-use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
-use windows::Win32::UI::WindowsAndMessaging::SendMessageW;
-use windows::Win32::UI::WindowsAndMessaging::WM_THEMECHANGED;
+pub mod data;
+pub mod taskbar;
+pub mod w11;
+
+use crate::taskbar::*;
+use crate::w11::*;
 
 fn main() {
     init();
+
+    loop {
+        // Get system messages
+        // PeekMessage
+    }
 }
 
 fn init() {
@@ -21,6 +22,7 @@ fn init() {
     println!("Initializing...");
 
     // register Windows API callbacks
+
     // terminate_existing_processes();
 
     // find explorer process
@@ -32,17 +34,12 @@ fn init() {
     //    hide_task_bar();
     //}
 
-    println!("Initialize complete!");
-}
+    println!("Initialized!");
 
-/**
- * Similar to UNIX fork, moves process out of console context
- * When executed, a console will not be spawned
- */
-fn detach_from_console() {
-    unsafe {
-        FreeConsole();
-    }
+    // spawn taskbar loop thread
+    std::thread::spawn(move || {
+        taskbar_loop();
+    });
 }
 
 /**
@@ -50,25 +47,4 @@ fn detach_from_console() {
  */
 fn terminate_existing_processes() {
     unimplemented!();
-}
-
-/**
- * Hides a Windows taskbar
- */
-fn hide_task_bar(taskbar: HWND) {
-    unsafe {
-        let empty_region = CreateRectRgn(0, 0, 0, 0);
-        if empty_region.is_invalid() {
-            panic!("Winapi failed: CreateRectRgn");
-        }
-        let set_window_rgn_result = SetWindowRgn(taskbar, empty_region, false);
-        if set_window_rgn_result == 0 {
-            panic!("Winapi failed: SetWindowRgn");
-        }
-
-        let send_message_result = SendMessageW(taskbar, WM_THEMECHANGED, WPARAM(0), LPARAM(0));
-        if send_message_result == LRESULT(0) {
-            panic!("Winapi failed: SendMessage WM_THEMECHANGED");
-        }
-    }
 }
