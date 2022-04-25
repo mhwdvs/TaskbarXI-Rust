@@ -31,8 +31,10 @@ fn init() {
     find_taskbars();
 
     // hide taskbars
-    for taskbar in &w11::TASKBARS {
-        //    hide_task_bar();
+    unsafe {
+        for taskbar in &w11::TASKBARS {
+            hide_taskbar(*taskbar);
+        }
     }
 
     println!("Initialized!");

@@ -39,16 +39,22 @@ pub fn get_window_region(window: HWND) -> i32 {
     }
 }
 
-/**
- * Hides a Windows taskbar
- */
-pub fn hide_task_bar(taskbar: HWND) {
+pub fn set_window_region(window: HWND, new_region: HRGN) {
     unsafe {
-        let empty_region = empty_rect_rgn();
-        let set_window_rgn_result = SetWindowRgn(taskbar, empty_region, false);
+        let set_window_rgn_result = SetWindowRgn(window, new_region, BOOL(true as i32));
         if set_window_rgn_result == 0 {
             panic!("Winapi failed: SetWindowRgn");
         }
+    }
+}
+
+/**
+ * Hides a Windows taskbar
+ */
+pub fn hide_taskbar(taskbar: HWND) {
+    unsafe {
+        // true redraws window after updating region
+        set_window_region(taskbar, empty_rect_rgn());
 
         let send_message_result = SendMessageW(taskbar, WM_THEMECHANGED, WPARAM(0), LPARAM(0));
         if send_message_result == LRESULT(0) {
@@ -96,6 +102,7 @@ pub fn find_taskbars() {
 
         return BOOL(true as i32);
     }
+
     unsafe {
         EnumWindows(Some(enum_windows_taskbars_callback), LPARAM(0));
     }
