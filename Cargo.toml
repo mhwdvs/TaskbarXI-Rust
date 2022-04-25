@@ -4,9 +4,17 @@ version = "0.1.0"
 edition = "2021"
 build = "build.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
+[dependencies.windows]
+version = "0.35.0"
+features = [
+    "alloc",
+    "Data_Xml_Dom",
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+]
 
 [build-dependencies]
 winres = "0.1"
