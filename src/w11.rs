@@ -4,6 +4,8 @@ use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::System::Console::FreeConsole;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
+pub static mut TASKBARS: Vec<HWND> = Vec::new();
+
 /**
  * Similar to UNIX fork, moves process out of console context
  * When executed, a console will not be spawned
@@ -14,6 +16,9 @@ pub fn detach_from_console() {
     }
 }
 
+/**
+ * Creates an empty (0x0) rectangle region
+ */
 pub fn empty_rect_rgn() -> HRGN {
     unsafe {
         let empty_region = CreateRectRgn(0, 0, 0, 0);
@@ -24,6 +29,9 @@ pub fn empty_rect_rgn() -> HRGN {
     }
 }
 
+/**
+ * Gets the rectangle region currently occupied by a window
+ */
 pub fn get_window_region(window: HWND) -> i32 {
     unsafe {
         let temp = empty_rect_rgn();
@@ -49,8 +57,46 @@ pub fn hide_task_bar(taskbar: HWND) {
     }
 }
 
+/**
+ * Finds a window given its class name string
+ */
 pub fn find_window(window_name: &str) -> HWND {
     unsafe {
         return FindWindowW(window_name, PCWSTR(std::ptr::null()));
+    }
+}
+
+/**
+ * Finds all taskbars and their details
+ * Details are appended to the TASKBARS
+ */
+pub fn find_taskbars() {
+    /**
+     * Callback function for EnumWindows from the Windows API
+     * Used to find all taskbars and store all of their details
+     * Details are appended to the TASKBARS vec
+     */
+    unsafe extern "system" fn enum_windows_taskbars_callback(
+        window_handle: HWND,
+        _: LPARAM,
+    ) -> BOOL {
+        let is_taskbar = 0;
+        let is_primary_taskbar = 0;
+
+        // is primary taskbar
+        if is_taskbar != 0 && is_primary_taskbar != 0 {
+            println!("Main taskbar found! @ hwid: {:?}", window_handle);
+            TASKBARS.push(window_handle);
+        }
+        // is regular taskbar
+        else if is_taskbar != 0 && is_primary_taskbar == 0 {
+            println!("Secondary taskbar found! @ hwid: {:?}", window_handle);
+            TASKBARS.push(window_handle);
+        }
+
+        return BOOL(true as i32);
+    }
+    unsafe {
+        EnumWindows(Some(enum_windows_taskbars_callback), LPARAM(0));
     }
 }

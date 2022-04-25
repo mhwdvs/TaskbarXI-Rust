@@ -28,11 +28,12 @@ fn init() {
     // find explorer process
 
     // find taskbar processes
+    find_taskbars();
 
     // hide taskbars
-    // for(taskbar : taskbars){
-    //    hide_task_bar();
-    //}
+    for taskbar in &w11::TASKBARS {
+        //    hide_task_bar();
+    }
 
     println!("Initialized!");
 

@@ -1,4 +1,6 @@
+use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
+use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
 
 use crate::w11::*;
 
@@ -30,5 +32,11 @@ fn set_taskbar() {
 
     // clear maximized window list
 
-    // for (taskbar : taskbars)
+    /*
+    for (taskbar : taskbars)
+    {
+        // query registry "TaskbarAl" - determine if taskbar is centered
+
+    }
+    */
 }
