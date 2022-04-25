@@ -50,11 +50,11 @@ fn terminate_existing_processes() {
 fn hide_task_bar(taskbar: HWND) {
     unsafe {
         let empty_region = CreateRectRgn(0, 0, 0, 0);
-        if (empty_region.is_invalid()) {
+        if empty_region.is_invalid() {
             panic!("Winapi failed: CreateRectRgn");
         }
         let result = SetWindowRgn(taskbar, empty_region, false);
-        if (result == 0) {
+        if result == 0 {
             panic!("Winapi failed: SetWindowRgn");
         }
     }
