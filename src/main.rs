@@ -1,9 +1,11 @@
 pub mod data;
+pub mod processes;
 pub mod taskbar;
-pub mod w11;
+pub mod window;
 
+use crate::data::*;
+use crate::processes::*;
 use crate::taskbar::*;
-use crate::w11::*;
 
 fn main() {
     init();
@@ -23,19 +25,11 @@ fn init() {
 
     // register Windows API callbacks
 
-    // terminate_existing_processes();
+    terminate_existing_processes();
 
     // find explorer process
 
-    // find taskbar processes
-    find_taskbars();
-
     // hide taskbars
-    unsafe {
-        for taskbar in &w11::TASKBARS {
-            hide_taskbar(*taskbar);
-        }
-    }
 
     println!("Initialized!");
 
@@ -43,11 +37,4 @@ fn init() {
     std::thread::spawn(move || {
         taskbar_loop();
     });
-}
-
-/**
- * Uses Windows APIs to find and terminate any existing TaskbarXI processes
- */
-fn terminate_existing_processes() {
-    unimplemented!();
 }
