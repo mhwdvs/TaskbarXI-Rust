@@ -54,10 +54,8 @@ pub fn hide_taskbars() {
     }
 }
 
-/**
- * Finds all taskbars and their details
- * Details are appended to the TASKBARS
- */
+/// Finds all taskbars and their details
+/// Details are appended to the TASKBARS
 fn find_taskbars() {
     /**
      * Callback function for EnumWindows from the Windows API

@@ -3,9 +3,7 @@ use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-/**
- * Gets the rectangle region currently occupied by a window
- */
+/// Gets the rectangle region currently occupied by a window
 pub fn get_window_region(window: HWND) -> i32 {
     unsafe {
         let temp = utility::empty_rect_rgn();
@@ -13,6 +11,7 @@ pub fn get_window_region(window: HWND) -> i32 {
     }
 }
 
+/// Sets the rectangle region currently occupied by a window
 pub fn set_window_region(window: HWND, new_region: HRGN) {
     unsafe {
         let set_window_rgn_result = SetWindowRgn(window, new_region, BOOL(true as i32));
@@ -22,9 +21,7 @@ pub fn set_window_region(window: HWND, new_region: HRGN) {
     }
 }
 
-/**
- * Hides a Windows taskbar
- */
+/// Hides a Windows taskbar
 pub fn hide_window(window: HWND) {
     unsafe {
         // true redraws window after updating region
@@ -37,21 +34,18 @@ pub fn hide_window(window: HWND) {
     }
 }
 
-/**
- * Finds a window given its class name string
- */
+/// Finds a window given its class name string
 pub fn find_window(window_name: &str) -> HWND {
     unsafe {
         return FindWindowW(window_name, PCWSTR(std::ptr::null()));
     }
 }
 
+/// Various window utility functions
 mod utility {
     use windows::Win32::Graphics::Gdi::*;
 
-    /**
-     * Creates an empty (0x0) rectangle region
-     */
+    /// Creates an empty (0x0) rectangle region
     pub fn empty_rect_rgn() -> HRGN {
         unsafe {
             let empty_region = CreateRectRgn(0, 0, 0, 0);
