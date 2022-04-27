@@ -3,10 +3,6 @@ pub mod processes;
 pub mod taskbar;
 pub mod window;
 
-use crate::data::*;
-use crate::processes::*;
-use crate::taskbar::*;
-
 fn main() {
     init();
 
@@ -17,24 +13,24 @@ fn main() {
 }
 
 fn init() {
-    detach_from_console();
+    processes::detach_from_console();
 
-    // parse command line args
+    // TODO: parse command line args
 
     println!("Initializing...");
 
+    processes::terminate_existing_processes();
+
     // register Windows API callbacks
-
-    terminate_existing_processes();
-
-    // find explorer process
+    window::register_window_resize_callbacks();
 
     // hide taskbars
+    taskbar::hide_taskbars();
 
     println!("Initialized!");
 
     // spawn taskbar loop thread
     std::thread::spawn(move || {
-        taskbar_loop();
+        taskbar::taskbar_loop();
     });
 }

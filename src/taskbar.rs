@@ -5,7 +5,16 @@ use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
 use crate::data::*;
 use crate::window::*;
 
-static TASKBAR_PROCESS_NAME: &str = "Shell_TrayWnd";
+// top-level taskbar class name
+static TASKBAR_CLASS: &str = "Shell_TrayWnd";
+// top-level taskbar class name on other monitors
+static SECONDARY_TASKBAR_CLASS: &str = "Shell_SecondaryTrayWnd";
+// Windows notification tray (including system clock) class name
+static TASKBAR_NOTIFICATION_TRAY_CLASS: &str = "TrayNotifyWnd";
+static TASKBAR_APPLICATION_TRAY_CLASS: &str = "ReBarWindow32";
+
+static RIGHT_NOTIFICATION_POP_OUT_CLASS: &str = "Windows.UI.Core.CoreWindow";
+static RIGHT_NOTIFICATION_POP_OUT_NAME: &str = "Notification Centre";
 
 pub fn taskbar_loop() {
     loop {
@@ -21,9 +30,9 @@ pub fn taskbar_loop() {
     }
 }
 
-fn set_taskbar() {
+pub fn set_taskbar() {
     // TODO: might need multiple tries + delay to find
-    let taskbar = find_window(TASKBAR_PROCESS_NAME);
+    let taskbar = find_window(TASKBAR_CLASS);
     let window_region = get_window_region(taskbar);
 
     if window_region == ERROR.try_into().unwrap() {
@@ -56,7 +65,7 @@ pub fn hide_taskbars() {
 
 /// Finds all taskbars and their details
 /// Details are appended to the TASKBARS
-fn find_taskbars() {
+fn find_taskbars() -> bool {
     /**
      * Callback function for EnumWindows from the Windows API
      * Used to find all taskbars and store all of their details
@@ -78,12 +87,31 @@ fn find_taskbars() {
         else if is_taskbar != 0 && is_primary_taskbar == 0 {
             println!("Secondary taskbar found! @ hwid: {:?}", window_handle);
             TASKBARS.push(window_handle);
+        } else {
+            // stop enumeration
+            return BOOL(true as i32);
         }
 
-        return BOOL(true as i32);
+        // continue enumeration
+        return BOOL(false as i32);
     }
 
     unsafe {
-        EnumWindows(Some(enum_windows_taskbars_callback), LPARAM(0));
+        let result = EnumWindows(Some(enum_windows_taskbars_callback), LPARAM(0));
+        println!("Num taskbars found: {}", TASKBARS.len());
+        if result == BOOL(0) {
+            panic!("Failed to find taskbars");
+        }
+        return true;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_taskbars() {
+        assert_eq!(find_taskbars(), true);
     }
 }

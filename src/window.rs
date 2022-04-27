@@ -41,6 +41,54 @@ pub fn find_window(window_name: &str) -> HWND {
     }
 }
 
+pub fn register_window_resize_callbacks() {
+    use super::*;
+    use windows::Win32::UI::Accessibility::SetWinEventHook;
+    use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
+
+    unsafe extern "system" fn set_win_event_hook_callback(
+        hwineventhook: HWINEVENTHOOK,
+        event: u32,
+        hwnd: HWND,
+        idobject: i32,
+        idchild: i32,
+        ideventthread: u32,
+        dwmseventtime: u32,
+    ) {
+        // get class name of Window event corresponds to
+        let title = processes::get_class_name(hwnd);
+
+        if title == "MSTask" || title == "Toolba" {
+            // trigger set_taskbar routine on below events
+            taskbar::set_taskbar();
+        }
+    }
+
+    fn set_win_event_hook(eventmin: u32, eventmax: u32) {
+        unsafe {
+            let result = SetWinEventHook(
+                eventmin,
+                eventmax,
+                HINSTANCE(0),
+                Some(set_win_event_hook_callback),
+                0,
+                0,
+                WINEVENT_SKIPOWNPROCESS,
+            );
+        }
+    }
+
+    set_win_event_hook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND);
+    set_win_event_hook(EVENT_OBJECT_CREATE, EVENT_OBJECT_DESTROY);
+    set_win_event_hook(EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND);
+    set_win_event_hook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND);
+
+    //SetWinEventHook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
+    //SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_DESTROY, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
+    //SetWinEventHook(EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
+    //SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
+}
+
 /// Various window utility functions
 mod utility {
     use windows::Win32::Graphics::Gdi::*;
