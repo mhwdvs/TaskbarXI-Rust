@@ -1,51 +1,112 @@
-use windows::core::*;
+use std::result::Result;
 use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
+use windows::Win32::UI::Accessibility::SetWinEventHook;
+use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-/// Gets the rectangle region currently occupied by a window
-pub fn get_window_region(window: HWND) -> i32 {
-    unsafe {
-        let temp = utility::empty_rect_rgn();
-        return GetWindowRgn(window, temp);
-    }
+pub struct Window {
+    _caption: String,
+    _class: String,
+    _window_handle: HWND,
+    _region_handle: HRGN,
 }
 
-/// Sets the rectangle region currently occupied by a window
-pub fn set_window_region(window: HWND, new_region: HRGN) {
-    unsafe {
-        let set_window_rgn_result = SetWindowRgn(window, new_region, BOOL(true as i32));
-        if set_window_rgn_result == 0 {
-            panic!("Winapi failed: SetWindowRgn");
+impl Window {
+    pub fn new(caption: &str, class: &str) -> Self {
+        let window_handle = find_window_handle(caption, class).unwrap();
+        let region_handle = create_region_handle().unwrap();
+
+        return Self {
+            _caption: caption.to_string(),
+            _class: class.to_string(),
+            _window_handle: window_handle,
+            _region_handle: region_handle,
+        };
+    }
+
+    /// Updates the rectangle region currently occupied by a window from Windows
+    pub fn update_region(&self) -> Result<(), String> {
+        unsafe {
+            match GetWindowRgn(self._window_handle, self._region_handle) as u32 {
+                NULLREGION | SIMPLEREGION | COMPLEXREGION => return Ok(()),
+                ERROR => return Err("Failed to get window region".to_string()),
+                _ => return Err("Unknown response".to_string()),
+            }
+        }
+    }
+
+    /// Sets the rectangle region currently occupied by a window
+    pub fn set_region(&mut self, region: HRGN) -> Result<(), String> {
+        unsafe {
+            match SetWindowRgn(self._window_handle, region, BOOL(true as i32)) {
+                _ => return Ok(()),
+                0 => return Err("Failed to set window region".to_string()),
+            }
+        }
+    }
+
+    /// Hides a Windows taskbar
+    pub fn hide(&mut self) -> Result<(), String> {
+        // delete old handle, create new 0,0,0,0 handle
+        delete_region(self._region_handle);
+        self._region_handle = create_region_handle().unwrap();
+
+        match self.set_region(self._region_handle) {
+            Err(error) => return Err(error),
+            _ => {}
+        }
+        unsafe {
+            match SendMessageW(self._window_handle, WM_THEMECHANGED, WPARAM(0), LPARAM(0)) {
+                LRESULT(0) => return Err("Failed to send WM_THEMECHANGED message".to_string()),
+                _ => return Ok(()),
+            }
         }
     }
 }
 
-/// Hides a Windows taskbar
-pub fn hide_window(window: HWND) {
-    unsafe {
-        // true redraws window after updating region
-        set_window_region(window, utility::empty_rect_rgn());
-
-        let send_message_result = SendMessageW(window, WM_THEMECHANGED, WPARAM(0), LPARAM(0));
-        if send_message_result == LRESULT(0) {
-            panic!("Winapi failed: SendMessage WM_THEMECHANGED");
-        }
+/// Window destructor
+impl Drop for Window {
+    fn drop(&mut self) {
+        delete_region(self._region_handle);
     }
 }
 
 /// Finds a window given its class name string
-pub fn find_window(window_name: &str) -> HWND {
+fn find_window_handle(class: &str, window: &str) -> Result<HWND, String> {
+    let mut res: HWND;
     unsafe {
-        return FindWindowW(window_name, PCWSTR(std::ptr::null()));
+        // findwindoww is ANSI version of FindWindow API, A is unicode
+        res = FindWindowW(class, window);
+    }
+    match res {
+        HWND(0) => return Err("Failed to find window".to_string()),
+        _ => return Ok(res),
+    }
+}
+
+fn get_class_name(window_handle: HWND) -> Result<String, String> {
+    unsafe {
+        // address of title
+        let title_bytes: &mut [u8] = &mut [];
+        // getclassnamew returns utf16
+        let title_len = GetClassNameA(window_handle, title_bytes);
+
+        if title_len == 0 || title_bytes.len() != title_len as usize {
+            return Err("Failed to get window title".to_string());
+        }
+
+        let title = String::from_utf8(title_bytes.to_vec()).unwrap();
+
+        if title.len() != title_len as usize {
+            return Err("Failed to get window title".to_string());
+        }
+
+        return Ok(title);
     }
 }
 
 pub fn register_window_resize_callbacks() {
-    use super::*;
-    use windows::Win32::UI::Accessibility::SetWinEventHook;
-    use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
-
     unsafe extern "system" fn set_win_event_hook_callback(
         hwineventhook: HWINEVENTHOOK,
         event: u32,
@@ -56,17 +117,18 @@ pub fn register_window_resize_callbacks() {
         dwmseventtime: u32,
     ) {
         // get class name of Window event corresponds to
-        let title = processes::get_class_name(hwnd);
+        let title = get_class_name(hwnd).unwrap();
 
         if title == "MSTask" || title == "Toolba" {
             // trigger set_taskbar routine on below events
-            taskbar::set_taskbar();
+            // essentially overrides whatever changes the system tries to make to the taskbar
+            todo!();
         }
     }
 
-    fn set_win_event_hook(eventmin: u32, eventmax: u32) {
+    fn set_win_event_hook(eventmin: u32, eventmax: u32) -> Result<HWINEVENTHOOK, String> {
         unsafe {
-            let result = SetWinEventHook(
+            let res = SetWinEventHook(
                 eventmin,
                 eventmax,
                 HINSTANCE(0),
@@ -75,32 +137,46 @@ pub fn register_window_resize_callbacks() {
                 0,
                 WINEVENT_SKIPOWNPROCESS,
             );
+            match res {
+                HWINEVENTHOOK(0) => return Err("Failed to set event hook".to_string()),
+                _ => return Ok(res),
+            }
         }
     }
 
-    set_win_event_hook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND);
-    set_win_event_hook(EVENT_OBJECT_CREATE, EVENT_OBJECT_DESTROY);
-    set_win_event_hook(EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND);
-    set_win_event_hook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND);
-
-    //SetWinEventHook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
-    //SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_DESTROY, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
-    //SetWinEventHook(EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
-    //SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProcCallback, 0, 0, WINEVENT_SKIPOWNPROCESS);
+    _ = set_win_event_hook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND);
+    _ = set_win_event_hook(EVENT_OBJECT_CREATE, EVENT_OBJECT_DESTROY);
+    _ = set_win_event_hook(EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND);
+    _ = set_win_event_hook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND);
 }
 
-/// Various window utility functions
-mod utility {
-    use windows::Win32::Graphics::Gdi::*;
-
-    /// Creates an empty (0x0) rectangle region
-    pub fn empty_rect_rgn() -> HRGN {
-        unsafe {
-            let empty_region = CreateRectRgn(0, 0, 0, 0);
-            if empty_region.is_invalid() {
-                panic!("Winapi failed: CreateRectRgn");
-            }
-            return empty_region;
+pub fn create_region_handle() -> Result<HRGN, String> {
+    unsafe {
+        let empty_region = CreateRectRgn(0, 0, 0, 0);
+        if empty_region.is_invalid() {
+            return Err("Failed to create rectangular region".to_string());
         }
+        return Ok(empty_region);
+    }
+}
+
+pub fn delete_region(region: HRGN) -> Result<(), String> {
+    unsafe {
+        // necessary, cant cast in match
+        let boolfalse = BOOL(false as i32);
+        match DeleteObject(region) {
+            boolfalse => return Err("Failed to delete region".to_string()),
+            _ => return Ok(()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_window_constructor() {
+        Window::new("", "");
     }
 }
