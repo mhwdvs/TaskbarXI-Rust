@@ -26,16 +26,26 @@ impl Window {
         };
     }
 
-    pub fn new_from_name(parent_window: Option<HWND>, caption: &str, class: &str) -> Self {
-        let window_handle = find_window_handle(parent_window, caption, class).unwrap();
-        let region_handle = create_region_handle().unwrap();
+    pub fn new_from_name(
+        parent_window: Option<HWND>,
+        caption: &str,
+        class: &str,
+    ) -> Result<Self, String> {
+        let window_handle = match find_window_handle(parent_window, caption, class) {
+            Err(x) => return Err(x),
+            Ok(x) => x,
+        };
+        let region_handle = match create_region_handle() {
+            Err(x) => return Err(x),
+            Ok(x) => x,
+        };
 
-        return Self {
+        return Ok(Self {
             _caption: caption.to_string(),
             _class: class.to_string(),
             _window_handle: window_handle,
             _region_handle: region_handle,
-        };
+        });
     }
 
     /// Updates the rectangle region currently occupied by a window from Windows
@@ -225,7 +235,7 @@ mod tests {
 
     #[test]
     fn window_constructor_from_name() {
-        _ = Window::new_from_name(None, "", "Shell_TrayWnd");
+        _ = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
     }
 
     #[should_panic(
@@ -233,48 +243,50 @@ mod tests {
     )]
     #[test]
     fn window_constructor_from_name_invalid() {
-        _ = Window::new_from_name(None, "", "");
+        _ = Window::new_from_name(None, "", "").unwrap();
     }
 
     #[ignore]
     #[test]
     fn window_constructor_from_handle() {
-        let w = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow");
+        let w = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow")
+            .unwrap();
         Window::new_from_window_handle(w._window_handle);
     }
 
     #[test]
     fn integration_main_taskbar() {
-        _ = Window::new_from_name(None, "", "Shell_TrayWnd");
+        _ = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
     }
 
     #[test]
     fn integration_secondary_taskbars() {
-        _ = Window::new_from_name(None, "", "Shell_SecondaryTrayWnd");
+        _ = Window::new_from_name(None, "", "Shell_SecondaryTrayWnd").unwrap();
     }
 
     #[test]
     fn integration_main_taskbar_notif_tray() {
         // child of Shell_TrayWnd, use FindWindowExA
-        let parent = Window::new_from_name(None, "", "Shell_TrayWnd");
-        _ = Window::new_from_name(Some(parent._window_handle), "", "TrayNotifyWnd");
+        let parent = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
+        _ = Window::new_from_name(Some(parent._window_handle), "", "TrayNotifyWnd").unwrap();
     }
 
     #[test]
     fn integration_main_taskbar_app_tray() {
         // child of Shell_TrayWnd, use FindWindowExA
-        let parent = Window::new_from_name(None, "", "Shell_TrayWnd");
-        _ = Window::new_from_name(Some(parent._window_handle), "", "ReBarWindow32");
+        let parent = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
+        _ = Window::new_from_name(Some(parent._window_handle), "", "ReBarWindow32").unwrap();
     }
 
     #[test]
     fn integration_notification_panel() {
-        _ = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow");
+        _ = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow")
+            .unwrap();
     }
 
     #[test]
     fn integration_window_valid_region() {
-        let w = Window::new_from_name(None, "", "Shell_TrayWnd");
+        let w = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
         // checks status of region
         _ = w.update_region().unwrap();
     }
