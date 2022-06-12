@@ -6,6 +6,11 @@ An application written in Rust to modify the Windows 11 Taskbar.
 
 Currently under development
 
+## Contributing
+
+- Ensure git hooks are configured:  
+  `git config core.hooksPath .githooks`
+
 ## Attribution
 
 **Thanks to the original contributors of [TaskbarXI](https://github.com/ChrisAnd1998/TaskbarXI): ❤️**  
