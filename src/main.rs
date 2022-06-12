@@ -1,7 +1,9 @@
-pub mod data;
-pub mod processes;
-pub mod taskbar;
+fn main() {}
 pub mod window;
+
+/*
+//pub mod processes;
+pub mod taskbar;
 
 fn main() {
     init();
@@ -13,13 +15,13 @@ fn main() {
 }
 
 fn init() {
-    processes::detach_from_console();
+    //processes::detach_from_console();
 
     // TODO: parse command line args
 
     println!("Initializing...");
 
-    processes::terminate_existing_processes();
+    //processes::terminate_existing_processes();
 
     // register Windows API callbacks
     window::register_window_resize_callbacks();
@@ -31,6 +33,7 @@ fn init() {
 
     // spawn taskbar loop thread
     std::thread::spawn(move || {
-        taskbar::taskbar_loop();
+                taskbar::taskbar_loop();
     });
 }
+*/

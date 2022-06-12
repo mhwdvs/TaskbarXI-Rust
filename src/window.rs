@@ -13,8 +13,21 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(caption: &str, class: &str) -> Self {
-        let window_handle = find_window_handle(caption, class).unwrap();
+    pub fn new_from_window_handle(window_handle: HWND) -> Self {
+        let caption = get_window_caption(window_handle).unwrap();
+        let class = get_window_class(window_handle).unwrap();
+        let region_handle = create_region_handle().unwrap();
+
+        return Self {
+            _caption: caption,
+            _class: class,
+            _window_handle: window_handle,
+            _region_handle: region_handle,
+        };
+    }
+
+    pub fn new_from_name(parent_window: Option<HWND>, caption: &str, class: &str) -> Self {
+        let window_handle = find_window_handle(parent_window, caption, class).unwrap();
         let region_handle = create_region_handle().unwrap();
 
         return Self {
@@ -40,8 +53,8 @@ impl Window {
     pub fn set_region(&mut self, region: HRGN) -> Result<(), String> {
         unsafe {
             match SetWindowRgn(self._window_handle, region, BOOL(true as i32)) {
-                _ => return Ok(()),
                 0 => return Err("Failed to set window region".to_string()),
+                _ => return Ok(()),
             }
         }
     }
@@ -49,7 +62,7 @@ impl Window {
     /// Hides a Windows taskbar
     pub fn hide(&mut self) -> Result<(), String> {
         // delete old handle, create new 0,0,0,0 handle
-        delete_region(self._region_handle);
+        _ = delete_region(self._region_handle);
         self._region_handle = create_region_handle().unwrap();
 
         match self.set_region(self._region_handle) {
@@ -68,27 +81,42 @@ impl Window {
 /// Window destructor
 impl Drop for Window {
     fn drop(&mut self) {
-        delete_region(self._region_handle);
+        _ = delete_region(self._region_handle);
     }
 }
 
 /// Finds a window given its class name string
-fn find_window_handle(class: &str, window: &str) -> Result<HWND, String> {
+fn find_window_handle(
+    parent_window: Option<HWND>,
+    caption: &str,
+    class: &str,
+) -> Result<HWND, String> {
     let mut res: HWND;
-    unsafe {
-        // findwindoww is ANSI version of FindWindow API, A is unicode
-        res = FindWindowW(class, window);
+    // call can be unreliable (Windows may create and destroy windows in background for optimisation)
+    // by retrying theres a much better chance of success without causing infinite loop in case of bad input
+    let found = false;
+    let max_retries = 5;
+    let mut retry_count = 0;
+    while !found && retry_count < max_retries {
+        unsafe {
+            // FindWindowW is ANSI version of FindWindow API, A is unicode
+            match parent_window {
+                Some(x) => res = FindWindowExW(x, HWND(0), class, caption),
+                None => res = FindWindowExW(HWND(0), HWND(0), class, caption),
+            }
+        }
+        match res {
+            HWND(0) => retry_count += 1,
+            _ => return Ok(res),
+        }
     }
-    match res {
-        HWND(0) => return Err("Failed to find window".to_string()),
-        _ => return Ok(res),
-    }
+    return Err("Failed to find window".to_string());
 }
 
-fn get_class_name(window_handle: HWND) -> Result<String, String> {
+fn get_window_class(window_handle: HWND) -> Result<String, String> {
+    // address of title
+    let title_bytes: &mut [u8] = &mut [];
     unsafe {
-        // address of title
-        let title_bytes: &mut [u8] = &mut [];
         // getclassnamew returns utf16
         let title_len = GetClassNameA(window_handle, title_bytes);
 
@@ -106,18 +134,39 @@ fn get_class_name(window_handle: HWND) -> Result<String, String> {
     }
 }
 
+fn get_window_caption(window_handle: HWND) -> Result<String, String> {
+    unsafe {
+        let title_len = GetWindowTextLengthA(window_handle);
+        let mut title_vec = Vec::with_capacity(title_len as usize);
+        let title_slice = title_vec.as_mut_slice();
+        let res = GetWindowTextA(window_handle, title_slice);
+
+        //if res == 0 || title_vec.len() != res as usize {
+        //    return Err("Failed to get window title".to_string());
+        //}
+
+        let title = String::from_utf8(title_slice.to_vec()).unwrap();
+
+        if title.len() != title_len as usize {
+            return Err("Failed to get window title".to_string());
+        }
+
+        return Ok(title);
+    }
+}
+
 pub fn register_window_resize_callbacks() {
     unsafe extern "system" fn set_win_event_hook_callback(
-        hwineventhook: HWINEVENTHOOK,
-        event: u32,
+        _hwineventhook: HWINEVENTHOOK,
+        _event: u32,
         hwnd: HWND,
-        idobject: i32,
-        idchild: i32,
-        ideventthread: u32,
-        dwmseventtime: u32,
+        _idobject: i32,
+        _idchild: i32,
+        _ideventthread: u32,
+        _dwmseventtime: u32,
     ) {
         // get class name of Window event corresponds to
-        let title = get_class_name(hwnd).unwrap();
+        let title = get_window_class(hwnd).unwrap();
 
         if title == "MSTask" || title == "Toolba" {
             // trigger set_taskbar routine on below events
@@ -163,20 +212,62 @@ pub fn create_region_handle() -> Result<HRGN, String> {
 pub fn delete_region(region: HRGN) -> Result<(), String> {
     unsafe {
         // necessary, cant cast in match
-        let boolfalse = BOOL(false as i32);
         match DeleteObject(region) {
-            boolfalse => return Err("Failed to delete region".to_string()),
+            BOOL(0) => return Err("Failed to delete region".to_string()),
             _ => return Ok(()),
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_window_constructor() {
-        Window::new("", "");
+    fn window_constructor_from_name() {
+        _ = Window::new_from_name(None, "", "Shell_TrayWnd");
+    }
+
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: \"Failed to find window\""
+    )]
+    #[test]
+    fn window_constructor_from_name_invalid() {
+        _ = Window::new_from_name(None, "", "");
+    }
+
+    #[ignore]
+    #[test]
+    fn window_constructor_from_handle() {
+        let w = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow");
+        Window::new_from_window_handle(w._window_handle);
+    }
+
+    #[test]
+    fn integration_main_taskbar() {
+        _ = Window::new_from_name(None, "", "Shell_TrayWnd");
+    }
+
+    #[test]
+    fn integration_secondary_taskbars() {
+        _ = Window::new_from_name(None, "", "Shell_SecondaryTrayWnd");
+    }
+
+    #[test]
+    fn integration_main_taskbar_notif_tray() {
+        // child of Shell_TrayWnd, use FindWindowExA
+        let parent = Window::new_from_name(None, "", "Shell_TrayWnd");
+        _ = Window::new_from_name(Some(parent._window_handle), "", "TrayNotifyWnd");
+    }
+
+    #[test]
+    fn integration_main_taskbar_app_tray() {
+        // child of Shell_TrayWnd, use FindWindowExA
+        let parent = Window::new_from_name(None, "", "Shell_TrayWnd");
+        _ = Window::new_from_name(Some(parent._window_handle), "", "ReBarWindow32");
+    }
+
+    #[test]
+    fn integration_notification_panel() {
+        _ = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow");
     }
 }
