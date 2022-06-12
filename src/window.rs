@@ -218,6 +218,7 @@ pub fn delete_region(region: HRGN) -> Result<(), String> {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,5 +270,12 @@ mod tests {
     #[test]
     fn integration_notification_panel() {
         _ = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow");
+    }
+
+    #[test]
+    fn integration_window_valid_region() {
+        let w = Window::new_from_name(None, "", "Shell_TrayWnd");
+        // checks status of region
+        _ = w.update_region().unwrap();
     }
 }
