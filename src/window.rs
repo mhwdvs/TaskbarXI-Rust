@@ -108,21 +108,16 @@ fn find_window_handle(
 
 fn get_window_class(window_handle: HWND) -> Result<String, String> {
     // address of title
-    let title_bytes: &mut [u8] = &mut [];
+    let title_len = 120usize;
+    // /0 isnt considered whitespace
+    let mut title_vec: Vec<u8> = vec![' ' as u8; title_len];
     unsafe {
-        // getclassnamew returns utf16
-        let title_len = GetClassNameA(window_handle, title_bytes);
+        let res = GetClassNameA(window_handle, title_vec.as_mut_slice());
+        let title = String::from_utf8(title_vec).unwrap().trim().to_string();
 
-        if title_len == 0 || title_bytes.len() != title_len as usize {
+        if res == 0 || title_len < res as usize || title.len() != res as usize + 1 {
             return Err("Failed to get window title".to_string());
         }
-
-        let title = String::from_utf8(title_bytes.to_vec()).unwrap();
-
-        if title.len() != title_len as usize {
-            return Err("Failed to get window title".to_string());
-        }
-
         return Ok(title);
     }
 }
@@ -138,7 +133,10 @@ fn get_window_caption(window_handle: HWND) -> Result<String, String> {
         //    return Err("Failed to get window title".to_string());
         //}
 
-        let title = String::from_utf8(title_slice.to_vec()).unwrap();
+        let title = String::from_utf8(title_slice.to_vec())
+            .unwrap()
+            .trim()
+            .to_string();
 
         if title.len() != title_len as usize {
             return Err("Failed to get window title".to_string());
@@ -217,15 +215,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn window_constructor_from_name() {
-        _ = Window::new(None, "", "Shell_TrayWnd").unwrap();
+    fn window_get_class() {
+        let w = Window::new(None, "", "Shell_TrayWnd").unwrap();
+        _ = get_window_class(w._window_handle).unwrap();
     }
 
-    #[should_panic(
-        expected = "called `Result::unwrap()` on an `Err` value: \"Failed to find window\""
-    )]
     #[test]
-    fn window_constructor_from_name_invalid() {
-        _ = Window::new(None, "", "").unwrap();
-    }
+    fn window_get_caption() {}
 }

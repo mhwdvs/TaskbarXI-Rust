@@ -1,6 +1,17 @@
 use taskbar11::window::Window;
 
 #[test]
+fn integration_window_constructor_from_name() {
+    _ = Window::new(None, "", "Shell_TrayWnd").unwrap();
+}
+
+#[should_panic(expected = "called `Result::unwrap()` on an `Err` value: \"Failed to find window\"")]
+#[test]
+fn window_constructor_from_name_invalid() {
+    _ = Window::new(None, "", "").unwrap();
+}
+
+#[test]
 fn integration_main_taskbar() {
     _ = Window::new(None, "", "Shell_TrayWnd").unwrap();
 }
