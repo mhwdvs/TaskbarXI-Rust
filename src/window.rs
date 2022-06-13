@@ -141,7 +141,7 @@ fn get_window_caption(window_handle: HWND) -> Result<String, String> {
         let res = GetWindowTextA(window_handle, title_vec.as_mut_slice());
 
         let title = String::from_utf8(title_vec)
-            .unwrap()
+            .unwrap_or_default()
             .trim()
             .trim_end_matches('\u{0}')
             .to_string();

@@ -2,7 +2,6 @@ use crate::window::*;
 use std::result::Result;
 use windows::Win32::Foundation::*;
 use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
-use windows::Win32::UI::WindowsAndMessaging::*;
 
 pub mod taskbar_constants {
     // top-level taskbar class name
@@ -64,17 +63,22 @@ pub fn find_taskbars() -> Result<Taskbars, String> {
         window_handle: HWND,
         _: LPARAM,
     ) -> BOOL {
-        // check if this window has the following children
-        let is_taskbar = FindWindowExA(window_handle, None, "Start", None);
-        let is_primary_taskbar = FindWindowExA(window_handle, None, "RebarWindow32", None);
-
-        // is primary taskbar
-        if is_taskbar != HWND(0) && is_primary_taskbar != HWND(0) {
-            PRIMARY_TASKBAR = Some(Window::new_from_window_handle(window_handle).unwrap());
-        }
-        // is regular taskbar
-        else if is_taskbar != HWND(0) {
-            SECONDARY_TASKBARS.push(Window::new_from_window_handle(window_handle).unwrap());
+        let w = match Window::new_from_window_handle(window_handle) {
+            Ok(x) => x,
+            Err(_x) => {
+                return BOOL(true as i32);
+            }
+        };
+        match w._class.as_str() {
+            "Shell_TrayWnd" => {
+                // is primary taskbar
+                PRIMARY_TASKBAR = Some(w);
+            }
+            "Shell_SecondaryTrayWnd" => {
+                // is regular taskbar
+                SECONDARY_TASKBARS.push(w);
+            }
+            _ => {}
         }
 
         // enumerate through all windows
