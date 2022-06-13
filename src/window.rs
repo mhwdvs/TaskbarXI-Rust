@@ -13,7 +13,11 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(parent_window: Option<HWND>, caption: &str, class: &str) -> Result<Self, String> {
+    pub fn new_from_name(
+        parent_window: Option<HWND>,
+        caption: &str,
+        class: &str,
+    ) -> Result<Self, String> {
         let window_handle = match find_window_handle(parent_window, caption, class) {
             Err(x) => return Err(x),
             Ok(x) => x,
@@ -26,6 +30,28 @@ impl Window {
         return Ok(Self {
             _caption: caption.to_string(),
             _class: class.to_string(),
+            _window_handle: window_handle,
+            _region_handle: region_handle,
+        });
+    }
+
+    pub fn new_from_window_handle(window_handle: HWND) -> Result<Self, String> {
+        let caption = match get_window_caption(window_handle) {
+            Err(_x) => "".to_string(),
+            Ok(x) => x,
+        };
+        let class = match get_window_class(window_handle) {
+            Err(x) => return Err(x),
+            Ok(x) => x,
+        };
+        let region_handle = match create_region_handle() {
+            Err(x) => return Err(x),
+            Ok(x) => x,
+        };
+
+        return Ok(Self {
+            _caption: caption,
+            _class: class,
             _window_handle: window_handle,
             _region_handle: region_handle,
         });
@@ -108,7 +134,7 @@ fn find_window_handle(
 
 fn get_window_class(window_handle: HWND) -> Result<String, String> {
     let title_len = 120usize;
-    // /0 isnt considered whitespace
+    // \0 isnt considered whitespace
     let mut title_vec: Vec<u8> = vec![' ' as u8; title_len];
     unsafe {
         let res = GetClassNameA(window_handle, title_vec.as_mut_slice());
@@ -130,10 +156,6 @@ fn get_window_caption(window_handle: HWND) -> Result<String, String> {
         let title_len = GetWindowTextLengthA(window_handle);
         let mut title_vec = vec![0; title_len as usize + 1];
         let res = GetWindowTextA(window_handle, title_vec.as_mut_slice());
-
-        //if res == 0 || title_vec.len() != res as usize {
-        //    return Err("Failed to get window title".to_string());
-        //}
 
         let title = String::from_utf8(title_vec)
             .unwrap()
@@ -219,7 +241,8 @@ mod tests {
 
     #[test]
     fn window_get_caption() {
-        let w = Window::new(None, "Notification Centre", "Windows.UI.Core.CoreWindow").unwrap();
+        let w = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow")
+            .unwrap();
         assert_eq!(
             "Notification Centre".to_string(),
             get_window_caption(w._window_handle).unwrap()
@@ -228,7 +251,7 @@ mod tests {
 
     #[test]
     fn window_get_class() {
-        let w = Window::new(None, "", "Shell_TrayWnd").unwrap();
+        let w = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
         assert_eq!("Shell_TrayWnd", get_window_class(w._window_handle).unwrap());
     }
 }
