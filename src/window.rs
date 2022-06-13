@@ -107,15 +107,18 @@ fn find_window_handle(
 }
 
 fn get_window_class(window_handle: HWND) -> Result<String, String> {
-    // address of title
     let title_len = 120usize;
     // /0 isnt considered whitespace
     let mut title_vec: Vec<u8> = vec![' ' as u8; title_len];
     unsafe {
         let res = GetClassNameA(window_handle, title_vec.as_mut_slice());
-        let title = String::from_utf8(title_vec).unwrap().trim().to_string();
+        let title = String::from_utf8(title_vec)
+            .unwrap()
+            .trim()
+            .trim_end_matches('\u{0}')
+            .to_string();
 
-        if res == 0 || title_len < res as usize || title.len() != res as usize + 1 {
+        if res == 0 || title_len < res as usize || title.len() != res as usize {
             return Err("Failed to get window title".to_string());
         }
         return Ok(title);
@@ -125,20 +128,20 @@ fn get_window_class(window_handle: HWND) -> Result<String, String> {
 fn get_window_caption(window_handle: HWND) -> Result<String, String> {
     unsafe {
         let title_len = GetWindowTextLengthA(window_handle);
-        let mut title_vec = Vec::with_capacity(title_len as usize);
-        let title_slice = title_vec.as_mut_slice();
-        let res = GetWindowTextA(window_handle, title_slice);
+        let mut title_vec = vec![0; title_len as usize + 1];
+        let res = GetWindowTextA(window_handle, title_vec.as_mut_slice());
 
         //if res == 0 || title_vec.len() != res as usize {
         //    return Err("Failed to get window title".to_string());
         //}
 
-        let title = String::from_utf8(title_slice.to_vec())
+        let title = String::from_utf8(title_vec)
             .unwrap()
             .trim()
+            .trim_end_matches('\u{0}')
             .to_string();
 
-        if title.len() != title_len as usize {
+        if res == 0 || title_len != res || title.len() != res as usize {
             return Err("Failed to get window title".to_string());
         }
 
@@ -215,11 +218,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn window_get_class() {
-        let w = Window::new(None, "", "Shell_TrayWnd").unwrap();
-        _ = get_window_class(w._window_handle).unwrap();
+    fn window_get_caption() {
+        let w = Window::new(None, "Notification Centre", "Windows.UI.Core.CoreWindow").unwrap();
+        assert_eq!(
+            "Notification Centre".to_string(),
+            get_window_caption(w._window_handle).unwrap()
+        );
     }
 
     #[test]
-    fn window_get_caption() {}
+    fn window_get_class() {
+        let w = Window::new(None, "", "Shell_TrayWnd").unwrap();
+        assert_eq!("Shell_TrayWnd", get_window_class(w._window_handle).unwrap());
+    }
 }
