@@ -7,6 +7,7 @@ use windows::Win32::UI::Accessibility::SetWinEventHook;
 use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
+#[derive(Clone)]
 pub struct Window {
     pub _caption: String,
     pub _class: String,

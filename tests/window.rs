@@ -55,7 +55,6 @@ fn integration_notification_panel() {
     _ = Window::new_from_name(None, "Notification Centre", "Windows.UI.Core.CoreWindow").unwrap();
 }
 
-#[ignore]
 #[test]
 fn integration_hide() {
     let mut w = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
