@@ -9,7 +9,6 @@ pub struct Window {
     pub _caption: String,
     pub _class: String,
     pub _window_handle: HWND,
-    pub _region_handle: HRGN,
 }
 
 impl Window {
@@ -22,16 +21,11 @@ impl Window {
             Err(x) => return Err(x),
             Ok(x) => x,
         };
-        let region_handle = match create_region_handle() {
-            Err(x) => return Err(x),
-            Ok(x) => x,
-        };
 
         return Ok(Self {
             _caption: caption.to_string(),
             _class: class.to_string(),
             _window_handle: window_handle,
-            _region_handle: region_handle,
         });
     }
 
@@ -44,50 +38,25 @@ impl Window {
             Err(x) => return Err(x),
             Ok(x) => x,
         };
-        let region_handle = match create_region_handle() {
-            Err(x) => return Err(x),
-            Ok(x) => x,
-        };
 
         return Ok(Self {
             _caption: caption,
             _class: class,
             _window_handle: window_handle,
-            _region_handle: region_handle,
         });
     }
 
-    /// Updates the rectangle region currently occupied by a window from Windows
-    pub fn update_region(&self) -> Result<(), String> {
-        unsafe {
-            match GetWindowRgn(self._window_handle, self._region_handle) as u32 {
-                NULLREGION | SIMPLEREGION | COMPLEXREGION => return Ok(()),
-                ERROR => return Err("Failed to get window region".to_string()),
-                _ => return Err("Unknown response".to_string()),
-            }
-        }
-    }
-
     /// Sets the rectangle region currently occupied by a window
-    pub fn set_region(&mut self, region: HRGN) -> Result<(), String> {
+    fn set_region(&mut self, region_handle: HRGN) -> Result<(), String> {
         unsafe {
-            match SetWindowRgn(self._window_handle, region, BOOL(true as i32)) {
+            match SetWindowRgn(self._window_handle, region_handle, BOOL(true as i32)) {
                 0 => return Err("Failed to set window region".to_string()),
-                _ => return Ok(()),
+                _ => {}
             }
         }
-    }
 
-    /// Hides a Windows taskbar
-    pub fn hide(&mut self) -> Result<(), String> {
-        // delete old handle, create new 0,0,0,0 handle
-        _ = delete_region(self._region_handle);
-        self._region_handle = create_region_handle().unwrap();
+        _ = free_region(region_handle);
 
-        match self.set_region(self._region_handle) {
-            Err(error) => return Err(error),
-            _ => {}
-        }
         unsafe {
             match SendMessageW(self._window_handle, WM_THEMECHANGED, WPARAM(0), LPARAM(0)) {
                 LRESULT(0) => return Err("Failed to send WM_THEMECHANGED message".to_string()),
@@ -95,12 +64,23 @@ impl Window {
             }
         }
     }
-}
 
-/// Window destructor
-impl Drop for Window {
-    fn drop(&mut self) {
-        _ = delete_region(self._region_handle);
+    /// Hides a Windows taskbar
+    pub fn hide(&mut self) -> Result<(), String> {
+        let region_handle = create_rect_region(0, 0, 0, 0).unwrap();
+        match self.set_region(region_handle) {
+            Err(error) => return Err(error),
+            Ok(()) => return Ok(()),
+        }
+    }
+
+    pub fn set_rect_region(&mut self, x1: i32, y1: i32, x2: i32, y2: i32) -> Result<(), String> {
+        let region_handle = create_rect_region(x1, y1, x2, y2).unwrap();
+
+        match self.set_region(region_handle) {
+            Err(error) => return Err(error),
+            Ok(()) => return Ok(()),
+        }
     }
 }
 
@@ -215,9 +195,21 @@ pub fn register_window_resize_callbacks() {
     _ = set_win_event_hook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND);
 }
 
-pub fn create_region_handle() -> Result<HRGN, String> {
+/// Updates the rectangle region currently occupied by a window from Windows
+pub fn get_region(window_handle: HWND) -> Result<HRGN, String> {
+    let region_handle = create_rect_region(0, 0, 0, 0).unwrap();
     unsafe {
-        let empty_region = CreateRectRgn(0, 0, 0, 0);
+        match GetWindowRgn(window_handle, region_handle) as u32 {
+            NULLREGION | SIMPLEREGION | COMPLEXREGION => return Ok(region_handle),
+            ERROR => return Err("Failed to get window region".to_string()),
+            _ => return Err("Unknown response".to_string()),
+        }
+    }
+}
+
+pub fn create_rect_region(x1: i32, y1: i32, x2: i32, y2: i32) -> Result<HRGN, String> {
+    unsafe {
+        let empty_region = CreateRectRgn(x1, y1, x2, y2);
         if empty_region.is_invalid() {
             return Err("Failed to create rectangular region".to_string());
         }
@@ -225,7 +217,7 @@ pub fn create_region_handle() -> Result<HRGN, String> {
     }
 }
 
-pub fn delete_region(region: HRGN) -> Result<(), String> {
+fn free_region(region: HRGN) -> Result<(), String> {
     unsafe {
         // necessary, cant cast in match
         match DeleteObject(region) {

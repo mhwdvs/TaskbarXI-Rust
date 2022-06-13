@@ -56,8 +56,17 @@ fn integration_window_notification_panel() {
 }
 
 #[test]
-fn integration_window_valid_region() {
+fn integration_window_get_region() {
     let w = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
-    // checks status of region
-    _ = w.update_region().unwrap();
+    _ = get_region(w._window_handle).unwrap();
 }
+
+#[ignore]
+#[test]
+fn integration_window_hide() {
+    let mut w = Window::new_from_name(None, "", "Shell_TrayWnd").unwrap();
+    _ = w.hide();
+}
+
+#[test]
+fn integration_window_show() {}
