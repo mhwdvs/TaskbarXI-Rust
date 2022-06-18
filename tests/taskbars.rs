@@ -8,3 +8,30 @@ fn integration_find_taskbars() {
         assert_eq!(st._class, taskbar_constants::SECONDARY_TASKBAR_CLASS);
     }
 }
+
+#[test]
+fn taskbars_iterator() {
+    let tbs = find_taskbars().unwrap();
+
+    let mut count: usize = 0;
+    for tb in tbs.iter() {
+        // check that contents gathered via iterator are idential to what we would expect from using the base item
+        match count {
+            0 => {
+                assert_eq!(tbs._primary_taskbar._caption, tb._caption);
+                assert_eq!(tbs._primary_taskbar._class, tb._class);
+                assert_eq!(tbs._primary_taskbar._window_handle, tb._window_handle);
+            }
+            _ => {
+                assert_eq!(tbs._secondary_taskbars[count - 1]._caption, tb._caption);
+                assert_eq!(tbs._secondary_taskbars[count - 1]._class, tb._class);
+                assert_eq!(
+                    tbs._secondary_taskbars[count - 1]._window_handle,
+                    tb._window_handle
+                );
+            }
+        }
+        count += 1;
+    }
+    assert_eq!(tbs._secondary_taskbars.len() + 1, count);
+}

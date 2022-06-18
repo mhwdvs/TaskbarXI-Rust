@@ -29,6 +29,11 @@ pub struct Taskbars {
     pub _secondary_taskbars: Vec<Window>,
 }
 
+pub struct TaskbarsIter<'a> {
+    _taskbars: &'a Taskbars,
+    _index: usize,
+}
+
 impl Taskbars {
     pub fn new(primary_taskbar: Window, secondary_taskbars: Vec<Window>) -> Taskbars {
         return Taskbars {
@@ -36,21 +41,45 @@ impl Taskbars {
             _secondary_taskbars: secondary_taskbars,
         };
     }
+
+    pub fn iter(&self) -> TaskbarsIter {
+        TaskbarsIter {
+            _taskbars: self,
+            _index: 0,
+        }
+    }
 }
 
-//pub fn taskbar_loop() {
-//    loop {
-//        todo!();
-//
-//        // wait for message from system
-//        // getmessage
-//
-//        // spawn thread in response to message
-//        std::thread::spawn(move || {
-//            set_taskbar();
-//        });
-//    }
-//}
+impl<'a> Iterator for TaskbarsIter<'a> {
+    type Item = &'a Window;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result: Option<Self::Item>;
+
+        if self._index == 0 {
+            result = Some(&self._taskbars._primary_taskbar);
+        } else if self._index - 1 < self._taskbars._secondary_taskbars.len() {
+            result = Some(&self._taskbars._secondary_taskbars[self._index - 1]);
+        } else {
+            result = None;
+        }
+
+        self._index += 1;
+        return result;
+    }
+}
+
+pub fn taskbar_loop() {
+    loop {
+        // wait for message from system
+        // getmessage
+
+        // spawn thread in response to message
+        std::thread::spawn(move || {
+            set_taskbar();
+        });
+    }
+}
 
 /// Finds all taskbars and their details
 pub fn find_taskbars() -> Result<Taskbars, String> {
@@ -102,26 +131,24 @@ pub fn find_taskbars() -> Result<Taskbars, String> {
     }
 }
 
-//pub fn set_taskbar() {
-//    // TODO: might need multiple tries + delay to find
-//    let taskbar = find_window(TaskbarConstants::TASKBAR_CLASS);
-//    let window_region = get_window_region(taskbar);
-//
-//    if window_region == ERROR.try_into().unwrap() {
-//        // in original, calls --restart on the service?
-//        panic!("Failed to get window region");
-//    }
-//
-//    // clear maximized window list
-//
-//    /*
-//    for (taskbar : taskbars)
-//    {
-//        // query registry "TaskbarAl" - determine if taskbar is centered
-//
-//    }
-//    */
-//}
+pub fn reset_taskbars(tbs: Taskbars) {
+    for tb in tbs._secondary_taskbars {
+        tb.redraw();
+    }
+}
+
+pub fn set_taskbar() {
+    // TODO: might need multiple tries + delay to find
+    let tbs = find_taskbars().unwrap();
+
+    /*
+    for (taskbar : taskbars)
+    {
+        // query registry "TaskbarAl" - determine if taskbar is centered
+
+    }
+    */
+}
 
 //pub fn hide_taskbars() {
 //    // find taskbar processes
