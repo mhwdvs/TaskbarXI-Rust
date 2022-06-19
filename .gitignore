@@ -1,1 +1,5 @@
-﻿target/
+﻿# Build artifacts
+target/
+# LLVM code coverage data
+default.profraw
+default.profdata
