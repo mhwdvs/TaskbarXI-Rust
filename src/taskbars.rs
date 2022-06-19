@@ -1,4 +1,5 @@
 use crate::window::*;
+use std::ops;
 use std::result::Result;
 use windows::Win32::Foundation::*;
 use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
@@ -24,6 +25,7 @@ pub mod taskbar_constants {
 static mut PRIMARY_TASKBAR: Option<Window> = None;
 static mut SECONDARY_TASKBARS: Vec<Window> = Vec::new();
 
+#[derive(Clone)]
 pub struct Taskbars {
     pub _primary_taskbar: Window,
     pub _secondary_taskbars: Vec<Window>,
@@ -48,24 +50,39 @@ impl Taskbars {
             _index: 0,
         }
     }
+
+    pub fn count(&self) -> usize {
+        return self._secondary_taskbars.len() + 1;
+    }
 }
 
 impl<'a> Iterator for TaskbarsIter<'a> {
     type Item = &'a Window;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result: Option<Self::Item>;
-
-        if self._index == 0 {
-            result = Some(&self._taskbars._primary_taskbar);
-        } else if self._index - 1 < self._taskbars._secondary_taskbars.len() {
-            result = Some(&self._taskbars._secondary_taskbars[self._index - 1]);
+        if self._index < self._taskbars.count() {
+            self._index += 1;
+            return Some(&self._taskbars[self._index - 1]);
         } else {
-            result = None;
+            return None;
         }
+    }
+}
 
-        self._index += 1;
-        return result;
+impl ops::Index<usize> for Taskbars {
+    type Output = Window;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => return &self._primary_taskbar,
+            _ => {
+                if index - 1 < self._secondary_taskbars.len() {
+                    return &self._secondary_taskbars[index - 1];
+                } else {
+                    panic!("Index out of bounds");
+                }
+            }
+        }
     }
 }
 
@@ -139,7 +156,7 @@ pub fn reset_taskbars(tbs: Taskbars) {
 
 pub fn set_taskbar() {
     // TODO: might need multiple tries + delay to find
-    let tbs = find_taskbars().unwrap();
+    let _tbs = find_taskbars().unwrap();
 
     /*
     for (taskbar : taskbars)

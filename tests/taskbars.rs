@@ -35,3 +35,40 @@ fn taskbars_iterator() {
     }
     assert_eq!(tbs._secondary_taskbars.len() + 1, count);
 }
+
+#[test]
+fn taskbars_index() {
+    let tbs = find_taskbars().unwrap();
+
+    for index in 0..tbs.count() - 1 {
+        // check that contents gathered via iterator are idential to what we would expect from using the base item
+        match index {
+            0 => {
+                assert_eq!(tbs._primary_taskbar._caption, tbs[index]._caption);
+                assert_eq!(tbs._primary_taskbar._class, tbs[index]._class);
+                assert_eq!(
+                    tbs._primary_taskbar._window_handle,
+                    tbs[index]._window_handle
+                );
+            }
+            _ => {
+                assert_eq!(
+                    tbs._secondary_taskbars[index - 1]._caption,
+                    tbs[index]._caption
+                );
+                assert_eq!(tbs._secondary_taskbars[index - 1]._class, tbs[index]._class);
+                assert_eq!(
+                    tbs._secondary_taskbars[index - 1]._window_handle,
+                    tbs[index]._window_handle
+                );
+            }
+        }
+    }
+}
+
+#[should_panic]
+#[test]
+fn taskbars_index_out_of_bounds() {
+    let tbs = find_taskbars().unwrap();
+    _ = tbs[tbs.count()];
+}
