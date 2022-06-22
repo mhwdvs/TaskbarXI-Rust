@@ -15,6 +15,14 @@ pub struct Window {
 }
 
 impl Window {
+    pub const fn new() -> Self {
+        return Self {
+            _caption: String::new(),
+            _class: String::new(),
+            _window_handle: HWND(0),
+        };
+    }
+
     pub fn new_from_name(
         parent_window: Option<HWND>,
         caption: &str,

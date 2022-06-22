@@ -22,9 +22,6 @@ pub mod taskbar_constants {
     pub static RIGHT_NOTIFICATION_POP_OUT_CLASS: &str = "Windows.UI.Core.CoreWindow";
 }
 
-static mut PRIMARY_TASKBAR: Option<Window> = None;
-static mut SECONDARY_TASKBARS: Vec<Window> = Vec::new();
-
 #[derive(Clone)]
 pub struct Taskbars {
     pub _primary_taskbar: Window,
@@ -37,7 +34,14 @@ pub struct TaskbarsIter<'a> {
 }
 
 impl Taskbars {
-    pub fn new(primary_taskbar: Window, secondary_taskbars: Vec<Window>) -> Taskbars {
+    pub const fn new() -> Self {
+        return Self {
+            _primary_taskbar: Window::new(),
+            _secondary_taskbars: Vec::new(),
+        };
+    }
+
+    pub fn new_from_existing(primary_taskbar: Window, secondary_taskbars: Vec<Window>) -> Self {
         return Taskbars {
             _primary_taskbar: primary_taskbar,
             _secondary_taskbars: secondary_taskbars,
@@ -100,29 +104,36 @@ pub fn taskbar_loop() {
 
 /// Finds all taskbars and their details
 pub fn find_taskbars() -> Result<Taskbars, String> {
-    /**
-     * Callback function for EnumWindows from the Windows API
-     * Used to find all taskbars and store all of their details
-     * Details are appended to the TASKBARS vec
-     */
+    let mut taskbars: Taskbars = Taskbars::new();
+    // necessary to coerce into raw pointer (i think)
+    // required for thread-safe implementation (as opposed to static)
+    let taskbars_addr: *mut Taskbars = &mut taskbars;
+
+    /// Callback function for EnumWindows from the Windows API
+    /// Used to find all taskbars and store all of their details
+    /// Details are appended to the TASKBARS vec
     unsafe extern "system" fn enum_windows_taskbars_callback(
         window_handle: HWND,
-        _: LPARAM,
+        taskbars_addr: LPARAM,
     ) -> BOOL {
+        // wrap address back into a raw pointer
+        let mut taskbars_ptr = taskbars_addr.0 as *mut Taskbars;
+
         let w = match Window::new_from_window_handle(window_handle) {
             Ok(x) => x,
             Err(_x) => {
+                // continue iteration
                 return BOOL(true as i32);
             }
         };
         match w._class.as_str() {
             "Shell_TrayWnd" => {
                 // is primary taskbar
-                PRIMARY_TASKBAR = Some(w);
+                (*taskbars_ptr)._primary_taskbar = w;
             }
             "Shell_SecondaryTrayWnd" => {
                 // is regular taskbar
-                SECONDARY_TASKBARS.push(w);
+                (*taskbars_ptr)._secondary_taskbars.push(w);
             }
             _ => {}
         }
@@ -132,17 +143,14 @@ pub fn find_taskbars() -> Result<Taskbars, String> {
     }
 
     unsafe {
-        // re-initialise static variables
-        PRIMARY_TASKBAR = None;
-        SECONDARY_TASKBARS.clear();
-
-        match EnumWindows(Some(enum_windows_taskbars_callback), LPARAM(0)) {
+        // perform search
+        match EnumWindows(
+            Some(enum_windows_taskbars_callback),
+            LPARAM(taskbars_addr as isize),
+        ) {
             BOOL(0) => return Err("Failed to find taskbars".to_string()),
             _ => {
-                return Ok(Taskbars::new(
-                    PRIMARY_TASKBAR.clone().unwrap(),
-                    SECONDARY_TASKBARS.clone(),
-                ))
+                return Ok(taskbars);
             }
         }
     }
