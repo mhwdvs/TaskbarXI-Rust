@@ -15,6 +15,7 @@ Currently under development
 ### Useful Tools
 
 [Microsoft's Spy++](https://docs.microsoft.com/en-us/visualstudio/debugger/introducing-spy-increment?view=vs-2022) is a handy tool for inspecting window data (window handles, class names, caption names) and more  
+[rustfilt](https://github.com/luser/rustfilt) is a demangler similar to c++filt but for Rust, which is optionally used by `llvm-cov`.
 
 ## Attribution
 

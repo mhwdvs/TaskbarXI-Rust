@@ -3,3 +3,5 @@ target/
 # LLVM code coverage data
 default.profraw
 default.profdata
+# Code coverage output
+test-coverage-output/
