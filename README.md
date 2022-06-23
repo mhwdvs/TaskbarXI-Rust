@@ -1,6 +1,6 @@
 # TaskbarXI-Rust
 
-An application written in Rust to modify the Windows 11 Taskbar.
+An application to modify the Windows 11 Taskbar, written in Rust.
 
 ## TODO
 
@@ -14,7 +14,7 @@ Currently under development
 
 ### Useful Tools
 
-[Microsoft's Spy++](https://docs.microsoft.com/en-us/visualstudio/debugger/introducing-spy-increment?view=vs-2022) is a handy tool for inspecting window data (window handles, class names, caption names) and more
+[Microsoft's Spy++](https://docs.microsoft.com/en-us/visualstudio/debugger/introducing-spy-increment?view=vs-2022) is a handy tool for inspecting window data (window handles, class names, caption names) and more  
 
 ## Attribution
 
