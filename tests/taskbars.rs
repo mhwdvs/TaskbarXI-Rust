@@ -72,3 +72,33 @@ fn taskbars_index_out_of_bounds() {
     let tbs = find_taskbars().unwrap();
     _ = tbs[tbs.count()];
 }
+
+#[test]
+fn taskbars_clone() {
+    let tbs = find_taskbars().unwrap();
+    let tbclone = tbs.clone();
+    assert_eq!(
+        tbs._primary_taskbar._caption,
+        tbclone._primary_taskbar._caption
+    );
+    assert_eq!(tbs._primary_taskbar._class, tbclone._primary_taskbar._class);
+    assert_eq!(
+        tbs._primary_taskbar._window_handle,
+        tbclone._primary_taskbar._window_handle
+    );
+
+    for i in 0..tbs._secondary_taskbars.len() {
+        assert_eq!(
+            tbs._secondary_taskbars[i]._caption,
+            tbclone._secondary_taskbars[i]._caption
+        );
+        assert_eq!(
+            tbs._secondary_taskbars[i]._class,
+            tbclone._secondary_taskbars[i]._class
+        );
+        assert_eq!(
+            tbs._secondary_taskbars[i]._window_handle,
+            tbclone._secondary_taskbars[i]._window_handle
+        );
+    }
+}
