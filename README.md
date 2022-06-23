@@ -12,6 +12,10 @@ Currently under development
   `git config core.hooksPath .githooks`  
   For now git hooks will be utilized in favor of CI/CD due to reliance on Windows API's, window manager etc. that aren't available in a clean-room environment such as a Github Actions runner.
 
+### Code coverage
+
+`test-coverage.sh` will provide you with useful insights into the state of the tests. There's currently no requirement for 100% coverage or any other arbitrary proportion, although pending development this might be something to target in the future.
+
 ### Useful Tools
 
 [Microsoft's Spy++](https://docs.microsoft.com/en-us/visualstudio/debugger/introducing-spy-increment?view=vs-2022) is a handy tool for inspecting window data (window handles, class names, caption names) and more  
@@ -19,7 +23,7 @@ Currently under development
 
 ## Attribution
 
-**Thanks to the original contributors of [TaskbarXI](https://github.com/ChrisAnd1998/TaskbarXI): ❤️**  
+**Thanks to the original contributors of [TaskbarXI](https://github.com/ChrisAnd1998/TaskbarXI) ❤️: **  
 [@ChrisAnd1998](https://github.com/ChrisAnd1998)  
 [@PrincessAkira](https://github.com/PrincessAkira)  
 [@dmitryaleshin](https://github.com/dmitryaleshin)  
